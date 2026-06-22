@@ -23,11 +23,11 @@ interface SpotifyResource {
  * consumimos, evitando acoplar o domínio à tipagem completa da API.
  */
 interface SpotifyTrackObject {
-  readonly id: string;
-  readonly name: string;
-  readonly artists: ReadonlyArray<{ name: string }>;
-  readonly duration_ms: number;
-  readonly external_urls: { spotify: string };
+  readonly id?: string;
+  readonly name?: string;
+  readonly artists?: ReadonlyArray<{ name?: string }>;
+  readonly duration_ms?: number;
+  readonly external_urls?: { spotify?: string };
   readonly album?: { images?: ReadonlyArray<{ url: string }> };
 }
 
@@ -173,7 +173,10 @@ export class SpotifyProvider implements ISourceProvider {
    */
   private mapAlbum(album: AlbumResponse): Track[] {
     const albumThumbnail = album.images?.[0]?.url;
-    return album.tracks.items.map((item) => this.mapTrackObject(item, albumThumbnail));
+    const items = album.tracks?.items ?? [];
+    return items
+      .filter((item): item is SpotifyTrackObject => Boolean(item?.id))
+      .map((item) => this.mapTrackObject(item, albumThumbnail));
   }
 
   /**
@@ -181,9 +184,11 @@ export class SpotifyProvider implements ISourceProvider {
    * ou removidas) são descartados; cada faixa traz sua própria imagem de álbum.
    */
   private mapPlaylist(playlist: PlaylistResponse): Track[] {
-    return playlist.tracks.items
-      .filter((item): item is { track: SpotifyTrackObject } => item.track !== null)
-      .map((item) => this.mapTrackObject(item.track));
+    const items = playlist.tracks?.items ?? [];
+    return items
+      .map((item) => item?.track)
+      .filter((track): track is SpotifyTrackObject => Boolean(track?.id))
+      .map((track) => this.mapTrackObject(track));
   }
 
   /**
@@ -191,25 +196,31 @@ export class SpotifyProvider implements ISourceProvider {
    * Quando informado, `fallbackThumbnail` cobre faixas sem imagem própria.
    */
   private mapTrackObject(track: SpotifyTrackObject, fallbackThumbnail?: string): Track {
+    const author = (track.artists ?? [])
+      .map((artist) => artist.name)
+      .filter((name): name is string => Boolean(name))
+      .join(', ');
     return {
-      id: track.id,
-      title: track.name,
-      author: track.artists.map((artist) => artist.name).join(', '),
-      durationMs: track.duration_ms,
-      url: track.external_urls.spotify,
+      id: track.id ?? '',
+      title: track.name ?? 'Desconhecido',
+      author: author || 'Desconhecido',
+      durationMs: track.duration_ms ?? 0,
+      // O áudio do Spotify é resolvido por busca (título + artista), então uma
+      // URL ausente não impede a reprodução.
+      url: track.external_urls?.spotify ?? '',
       source: SourceType.Spotify,
       thumbnailUrl: track.album?.images?.[0]?.url ?? fallbackThumbnail,
     };
   }
 }
 
-/** Resposta do endpoint de álbum. */
+/** Resposta do endpoint de álbum (campos opcionais por robustez). */
 interface AlbumResponse {
   readonly images?: ReadonlyArray<{ url: string }>;
-  readonly tracks: { items: ReadonlyArray<SpotifyTrackObject> };
+  readonly tracks?: { items?: ReadonlyArray<SpotifyTrackObject> };
 }
 
-/** Resposta do endpoint de playlist. */
+/** Resposta do endpoint de playlist (campos opcionais por robustez). */
 interface PlaylistResponse {
-  readonly tracks: { items: ReadonlyArray<{ track: SpotifyTrackObject | null }> };
+  readonly tracks?: { items?: ReadonlyArray<{ track: SpotifyTrackObject | null }> };
 }

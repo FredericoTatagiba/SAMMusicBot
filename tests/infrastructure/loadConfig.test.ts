@@ -13,7 +13,7 @@ describe('loadConfig', () => {
     const config = loadConfig({ ...BASE_ENV });
     expect(config.commandPrefix).toBe('!');
     expect(config.maxQueueSize).toBe(200);
-    expect(config.idleDisconnectMs).toBe(300_000);
+    expect(config.idleDisconnectMs).toBe(10_000);
     expect(config.logLevel).toBe(LogLevel.Info);
     expect(config.spotify.clientId).toBeUndefined();
   });

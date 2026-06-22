@@ -69,7 +69,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): BotConfig {
     idleDisconnectMs: parsePositiveInt(
       'IDLE_DISCONNECT_MS',
       env.IDLE_DISCONNECT_MS,
-      300_000,
+      10_000,
     ),
     logLevel: parseLogLevel(env.LOG_LEVEL),
     allowedGuildIds: parseList(env.ALLOWED_GUILD_IDS),
