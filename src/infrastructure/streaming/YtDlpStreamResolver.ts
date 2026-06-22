@@ -24,7 +24,8 @@ export class YtDlpStreamResolver implements IStreamResolver {
           noWarnings: true,
           noPlaylist: true,
         },
-        { stdio: ['ignore', 'pipe', 'ignore'] },
+        // windowsHide impede que a janela de console do yt-dlp apareça no Windows.
+        { stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true },
       );
 
       const stream = subprocess.stdout;
