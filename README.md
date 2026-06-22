@@ -265,6 +265,19 @@ npm install
 **`EBUSY: resource busy or locked` em `ffmpeg-static` durante o install.**
 Algum programa está segurando o arquivo (antivírus, um `node` ainda rodando, ou o editor). Feche o bot/editor, pause o antivírus na pasta do projeto se necessário, e rode o `npm install` de novo. Em último caso, reinicie o PC e tente novamente.
 
+**`npm install` reclama que precisa de Python (`youtube-dl-exec needs Python`).**
+É só uma checagem do instalador — o yt-dlp baixado é standalone e não precisa de Python para rodar. Pule a checagem na instalação:
+
+```powershell
+$env:YOUTUBE_DL_SKIP_PYTHON_CHECK=1
+npm install
+```
+
+(Opcional: defina `YOUTUBE_DL_SKIP_PYTHON_CHECK=1` como variável de ambiente do Windows para nunca mais precisar digitar.)
+
+**O bot entra no canal de voz mas fica mudo (sem áudio).**
+O Discord aposentou os modos de criptografia de voz antigos. Use `@discordjs/voice` **>= 0.18** (este projeto usa 0.19.x) com uma lib de criptografia suportada (`libsodium-wrappers`, já incluída). Se atualizou a versão, rode `npm install` de novo.
+
 **Quero usar Node LTS.** Opcional, mas seguro: instalar o **Node 20 ou 22 LTS** evita incompatibilidades com pacotes muito novos. Com o `opusscript`, porém, o Node 24 também funciona.
 
 ## Licença

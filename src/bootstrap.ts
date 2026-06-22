@@ -3,7 +3,7 @@ import { BotConfig } from './core/interfaces/IConfig';
 import { ISourceProvider } from './core/interfaces/ISourceProvider';
 import { loadConfig } from './infrastructure/config/loadConfig';
 import { ConsoleLogger } from './infrastructure/logging/ConsoleLogger';
-import { PlayDlStreamResolver } from './infrastructure/streaming/PlayDlStreamResolver';
+import { YtDlpStreamResolver } from './infrastructure/streaming/YtDlpStreamResolver';
 import { YouTubeProvider } from './providers/youtube/YouTubeProvider';
 import { SpotifyProvider } from './providers/spotify/SpotifyProvider';
 import { SoundCloudProvider } from './providers/soundcloud/SoundCloudProvider';
@@ -53,7 +53,7 @@ export function createMusicBot(config: BotConfig = loadConfig()): MusicBot {
   ];
 
   const searchService = new SearchService(providers, youtube, logger);
-  const streamResolver = new PlayDlStreamResolver();
+  const streamResolver = new YtDlpStreamResolver();
   const connector = new DiscordVoiceConnector(client);
   const queueManager = new QueueManager(
     connector,

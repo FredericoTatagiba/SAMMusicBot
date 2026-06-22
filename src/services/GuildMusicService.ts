@@ -28,6 +28,7 @@ export interface QueueSnapshot {
 export class GuildMusicService {
   private player: IAudioPlayer | null = null;
   private isPlaying = false;
+  private advancing = false;
   private idleTimer: NodeJS.Timeout | null = null;
 
   constructor(
@@ -117,8 +118,18 @@ export class GuildMusicService {
   }
 
   private async handleTrackEnd(): Promise<void> {
+    // Guarda contra avanço duplo: ao falhar, o player pode emitir 'error' e
+    // 'idle' quase juntos; sem isto, pularíamos duas faixas de uma vez.
+    if (this.advancing) {
+      return;
+    }
+    this.advancing = true;
     this.isPlaying = false;
-    await this.playNext();
+    try {
+      await this.playNext();
+    } finally {
+      this.advancing = false;
+    }
   }
 
   private async playNext(): Promise<void> {

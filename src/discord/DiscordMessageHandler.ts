@@ -39,6 +39,10 @@ export class DiscordMessageHandler {
     }
     const parsed = parseCommand(message.content, this.prefix);
     if (!parsed) {
+      // Digitar apenas o prefixo (ex.: "#") mostra a lista de comandos.
+      if (message.content.trim() === this.prefix) {
+        await this.dispatcher.dispatch('help', this.toContext(message, []));
+      }
       return;
     }
     this.logger.debug('Comando recebido', {
