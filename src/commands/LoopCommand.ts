@@ -12,7 +12,7 @@ const MODE_LABELS: Record<LoopMode, string> = {
 /** Configura o modo de repetição: off | track | queue. */
 export class LoopCommand implements ICommand {
   readonly name = 'loop';
-  readonly aliases = ['repeat', 'repetir'] as const;
+  readonly aliases = ['repeat', 'repetir', 'l'] as const;
   readonly description = 'Define a repetição: off, track ou queue.';
   readonly usage = '!loop <off|track|queue>';
 

@@ -5,7 +5,7 @@ import { QueueManager } from '../services/QueueManager';
 /** Pausa a reprodução atual. */
 export class PauseCommand implements ICommand {
   readonly name = 'pause';
-  readonly aliases = ['pausar'] as const;
+  readonly aliases = ['pausar', 'pa'] as const;
   readonly description = 'Pausa a faixa atual.';
   readonly usage = '!pause';
 

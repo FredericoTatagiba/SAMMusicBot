@@ -5,7 +5,7 @@ import { QueueManager } from '../services/QueueManager';
 /** Retoma a reprodução pausada. */
 export class ResumeCommand implements ICommand {
   readonly name = 'resume';
-  readonly aliases = ['retomar', 'continuar'] as const;
+  readonly aliases = ['retomar', 'continuar', 'r'] as const;
   readonly description = 'Retoma a faixa pausada.';
   readonly usage = '!resume';
 

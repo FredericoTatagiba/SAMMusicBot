@@ -5,7 +5,7 @@ import { QueueManager } from '../services/QueueManager';
 /** Embaralha as faixas pendentes da fila. */
 export class ShuffleCommand implements ICommand {
   readonly name = 'shuffle';
-  readonly aliases = ['embaralhar'] as const;
+  readonly aliases = ['embaralhar', 'sh'] as const;
   readonly description = 'Embaralha a ordem das próximas faixas.';
   readonly usage = '!shuffle';
 
