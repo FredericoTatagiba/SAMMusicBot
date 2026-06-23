@@ -1,31 +1,28 @@
-import play from 'play-dl';
-
 import { TrackNotFoundError } from '../../core/errors';
 import { ISourceProvider } from '../../core/interfaces/ISourceProvider';
+import {
+  ExecYtDlpMetadataClient,
+  YtDlpInfo,
+  YtDlpMetadataClient,
+} from '../../infrastructure/ytdlp/YtDlpMetadataClient';
 import { SourceType, Track } from '../../core/types';
-
-/**
- * Objeto de vídeo do play-dl. Reproduzimos apenas os campos que consumimos,
- * evitando acoplar o domínio à tipagem completa da biblioteca (DIP).
- */
-interface YouTubeVideoLike {
-  readonly id?: string;
-  readonly title?: string;
-  readonly url: string;
-  readonly durationInSec?: number;
-  readonly channel?: { name?: string };
-  readonly thumbnails?: ReadonlyArray<{ url: string }>;
-}
 
 /** Regex que reconhece apenas URLs do YouTube (não termos de busca). */
 const YOUTUBE_URL_PATTERN = /(?:youtube\.com|youtu\.be)/i;
 
 /**
- * Provider de YouTube. Resolve URLs de vídeo, URLs de playlist e buscas
- * textuais (fallback) em faixas do domínio, usando a biblioteca play-dl.
+ * Provider de YouTube. Resolve URLs de playlist, URLs de vídeo e buscas
+ * textuais (fallback) em faixas do domínio.
+ *
+ * Toda a extração é delegada a um `YtDlpMetadataClient` injetado
+ * (Dependency Inversion): em produção usa o yt-dlp; em testes, um fake.
  */
 export class YouTubeProvider implements ISourceProvider {
   public readonly source = SourceType.YouTube;
+
+  constructor(
+    private readonly client: YtDlpMetadataClient = new ExecYtDlpMetadataClient(),
+  ) {}
 
   /**
    * Reconhece somente URLs do YouTube. Buscas em texto puro são tratadas
@@ -37,63 +34,84 @@ export class YouTubeProvider implements ISourceProvider {
   }
 
   public async resolve(query: string): Promise<Track[]> {
-    const kind = play.yt_validate(query);
-
-    if (kind === 'playlist') {
+    if (!this.supports(query)) {
+      return this.resolveSearch(query);
+    }
+    if (this.isPlaylistUrl(query)) {
       return this.resolvePlaylist(query);
     }
+    return this.resolveVideo(query);
+  }
 
-    if (kind === 'video') {
-      return this.resolveVideo(query);
-    }
-
-    return this.resolveSearch(query);
+  /**
+   * URL de playlist "pura" (`/playlist?list=`) — sem um vídeo específico.
+   * Quando há `v=`, tratamos como vídeo único (comportamento esperado de
+   * tocar a faixa apontada, não a playlist inteira).
+   */
+  private isPlaylistUrl(query: string): boolean {
+    return /[?&]list=/.test(query) && !/[?&]v=/.test(query);
   }
 
   /** Resolve uma URL de playlist em todas as suas faixas. */
   private async resolvePlaylist(query: string): Promise<Track[]> {
-    const pl = await play.playlist_info(query, { incomplete: true });
-    const videos = await pl.all_videos();
-    return videos.map((video) => this.toTrack(video));
+    const info = await this.client.extract(query, { flatPlaylist: true });
+    return this.mapEntries(query, info.entries ?? []);
   }
 
   /** Resolve uma URL de vídeo único em uma faixa. */
   private async resolveVideo(query: string): Promise<Track[]> {
-    const info = await play.video_info(query);
-    const details = info.video_details as YouTubeVideoLike | undefined;
-
-    // Guarda: a URL pode não resolver em algo utilizável.
-    if (!details) {
+    const info = await this.client.extract(query, { noPlaylist: true });
+    if (!info.id && !info.url && !info.webpage_url) {
       throw new TrackNotFoundError(query);
     }
-
-    return [this.toTrack(details)];
+    return [this.toTrack(info)];
   }
 
   /** Resolve um termo de busca na melhor correspondência (1 faixa). */
   private async resolveSearch(query: string): Promise<Track[]> {
-    const results = await play.search(query, {
-      source: { youtube: 'video' },
-      limit: 1,
-    });
-
-    if (results.length === 0) {
+    const info = await this.client.extract(`ytsearch1:${query}`);
+    const first = info.entries?.[0];
+    if (!first) {
       throw new TrackNotFoundError(query);
     }
-
-    return [this.toTrack(results[0])];
+    return [this.toTrack(first)];
   }
 
-  /** Mapeia um objeto de vídeo do play-dl para o value object de domínio. */
-  private toTrack(video: YouTubeVideoLike): Track {
+  private mapEntries(
+    query: string,
+    entries: ReadonlyArray<YtDlpInfo>,
+  ): Track[] {
+    if (entries.length === 0) {
+      throw new TrackNotFoundError(query);
+    }
+    return entries.map((entry) => this.toTrack(entry));
+  }
+
+  /** Mapeia metadados do yt-dlp para o value object de domínio. */
+  private toTrack(info: YtDlpInfo): Track {
+    const id = info.id ?? '';
     return {
-      id: video.id ?? '',
-      title: video.title ?? 'Desconhecido',
-      author: video.channel?.name ?? 'Desconhecido',
-      durationMs: (video.durationInSec ?? 0) * 1000,
-      url: video.url,
+      id,
+      title: info.title ?? 'Desconhecido',
+      author: info.channel ?? info.uploader ?? 'Desconhecido',
+      durationMs: Math.round((info.duration ?? 0) * 1000),
+      url: this.resolveUrl(info, id),
       source: SourceType.YouTube,
-      thumbnailUrl: video.thumbnails?.[0]?.url,
+      thumbnailUrl: info.thumbnail,
     };
+  }
+
+  /**
+   * Em modo flat, as entradas costumam trazer só o id; reconstruímos a URL
+   * canônica do vídeo para que o resolver de stream (yt-dlp) consiga tocá-la.
+   */
+  private resolveUrl(info: YtDlpInfo, id: string): string {
+    if (info.webpage_url) {
+      return info.webpage_url;
+    }
+    if (info.url && /^https?:/i.test(info.url)) {
+      return info.url;
+    }
+    return id ? `https://www.youtube.com/watch?v=${id}` : (info.url ?? '');
   }
 }

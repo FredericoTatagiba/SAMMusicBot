@@ -1,20 +1,18 @@
-import play from 'play-dl';
-
 import { TrackNotFoundError } from '../../src/core/errors';
 import { SourceType } from '../../src/core/types';
+import {
+  YtDlpInfo,
+  YtDlpMetadataClient,
+} from '../../src/infrastructure/ytdlp/YtDlpMetadataClient';
 import { SoundCloudProvider } from '../../src/providers/soundcloud/SoundCloudProvider';
 
-jest.mock('play-dl');
-
 describe('SoundCloudProvider', () => {
+  let client: { extract: jest.Mock<Promise<YtDlpInfo>, [string, object?]> };
   let provider: SoundCloudProvider;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    // Autenticação anônima mockada: client id fixo e token sem efeito.
-    (play.getFreeClientID as jest.Mock).mockResolvedValue('cid');
-    (play.setToken as jest.Mock).mockReturnValue(undefined);
-    provider = new SoundCloudProvider();
+    client = { extract: jest.fn() };
+    provider = new SoundCloudProvider(client as unknown as YtDlpMetadataClient);
   });
 
   describe('supports()', () => {
@@ -29,19 +27,21 @@ describe('SoundCloudProvider', () => {
   });
 
   describe('resolve()', () => {
-    it('resolve uma URL de faixa em uma única faixa', async () => {
-      (play.soundcloud as jest.Mock).mockResolvedValue({
-        type: 'track',
-        id: 123,
-        name: 'Song',
-        url: 'https://soundcloud.com/a/song',
-        durationInMs: 200000,
-        user: { name: 'Artist' },
+    it('resolve uma URL de faixa em uma única faixa (com no-playlist)', async () => {
+      client.extract.mockResolvedValue({
+        id: '123',
+        title: 'Song',
+        uploader: 'Artist',
+        duration: 200,
+        webpage_url: 'https://soundcloud.com/a/song',
         thumbnail: 'thumb',
       });
 
       const tracks = await provider.resolve('https://soundcloud.com/a/song');
 
+      expect(client.extract).toHaveBeenCalledWith('https://soundcloud.com/a/song', {
+        noPlaylist: true,
+      });
       expect(tracks).toEqual([
         {
           id: '123',
@@ -55,47 +55,57 @@ describe('SoundCloudProvider', () => {
       ]);
     });
 
-    it('resolve uma URL de playlist em múltiplas faixas', async () => {
-      (play.soundcloud as jest.Mock).mockResolvedValue({
-        type: 'playlist',
-        tracks: [
-          { id: 1, name: 'A', url: 'ua', durationInMs: 1000, user: { name: 'UA' }, thumbnail: 'ta' },
-          { id: 2, name: 'B', url: 'ub', durationInMs: 2000, user: { name: 'UB' }, thumbnail: 'tb' },
+    it('resolve uma URL de set (/sets/) em múltiplas faixas (modo flat)', async () => {
+      client.extract.mockResolvedValue({
+        _type: 'playlist',
+        entries: [
+          {
+            id: '1',
+            title: 'A',
+            duration: 1,
+            uploader: 'UA',
+            webpage_url: 'https://soundcloud.com/a/1',
+          },
+          {
+            id: '2',
+            title: 'B',
+            duration: 2,
+            uploader: 'UB',
+            webpage_url: 'https://soundcloud.com/a/2',
+          },
         ],
       });
 
-      const tracks = await provider.resolve('https://soundcloud.com/a/playlist');
+      const tracks = await provider.resolve('https://soundcloud.com/a/sets/mix');
 
+      expect(client.extract).toHaveBeenCalledWith('https://soundcloud.com/a/sets/mix', {
+        flatPlaylist: true,
+      });
       expect(tracks).toHaveLength(2);
       expect(tracks[0].id).toBe('1');
       expect(tracks[1].durationMs).toBe(2000);
       expect(tracks[1].author).toBe('UB');
     });
 
-    it('lança TrackNotFoundError para tipos não suportados (ex.: usuário)', async () => {
-      (play.soundcloud as jest.Mock).mockResolvedValue({ type: 'user' });
+    it('resolve playlist detectada pelo payload mesmo sem /sets/ na URL', async () => {
+      client.extract.mockResolvedValue({
+        entries: [
+          { id: '7', title: 'C', duration: 3, uploader: 'UC', webpage_url: 'u7' },
+        ],
+      });
+
+      const tracks = await provider.resolve('https://soundcloud.com/a/algo');
+
+      expect(tracks).toHaveLength(1);
+      expect(tracks[0].id).toBe('7');
+    });
+
+    it('lança TrackNotFoundError quando nada utilizável é retornado', async () => {
+      client.extract.mockResolvedValue({});
 
       await expect(provider.resolve('https://soundcloud.com/a')).rejects.toThrow(
         TrackNotFoundError,
       );
-    });
-
-    it('autentica apenas uma vez entre múltiplas resoluções (cache)', async () => {
-      (play.soundcloud as jest.Mock).mockResolvedValue({
-        type: 'track',
-        id: 1,
-        name: 'A',
-        url: 'ua',
-        durationInMs: 1000,
-        user: { name: 'UA' },
-        thumbnail: 'ta',
-      });
-
-      await provider.resolve('https://soundcloud.com/a/song');
-      await provider.resolve('https://soundcloud.com/a/song');
-
-      expect(play.getFreeClientID as jest.Mock).toHaveBeenCalledTimes(1);
-      expect(play.setToken as jest.Mock).toHaveBeenCalledTimes(1);
     });
   });
 });
