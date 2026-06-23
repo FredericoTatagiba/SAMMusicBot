@@ -6,8 +6,8 @@ import { QueueManager } from '../services/QueueManager';
 export class ResumeCommand implements ICommand {
   readonly name = 'resume';
   readonly aliases = ['retomar', 'continuar', 'r'] as const;
-  readonly description = 'Retoma a faixa pausada.';
-  readonly usage = '!resume';
+  readonly description = 'Retoma a música que estava pausada.';
+  readonly usage = '';
 
   constructor(private readonly queueManager: QueueManager) {}
 

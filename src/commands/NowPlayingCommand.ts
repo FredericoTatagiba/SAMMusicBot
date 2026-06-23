@@ -7,8 +7,8 @@ import { formatDuration } from '../utils/format';
 export class NowPlayingCommand implements ICommand {
   readonly name = 'nowplaying';
   readonly aliases = ['np', 'agora'] as const;
-  readonly description = 'Mostra a faixa que está tocando.';
-  readonly usage = '!nowplaying';
+  readonly description = 'Mostra detalhes da música que está tocando agora.';
+  readonly usage = '';
 
   constructor(private readonly queueManager: QueueManager) {}
 

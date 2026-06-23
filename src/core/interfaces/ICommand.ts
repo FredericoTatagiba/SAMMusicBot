@@ -21,7 +21,7 @@ export interface ICommand {
   readonly name: string;
   readonly aliases: readonly string[];
   readonly description: string;
-  /** Exemplo de uso para o comando de ajuda. */
+  /** Argumentos do comando (sem prefixo/nome); vazio quando não há. */
   readonly usage: string;
   execute(context: ICommandContext): Promise<void>;
 }

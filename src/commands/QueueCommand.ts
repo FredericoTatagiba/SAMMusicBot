@@ -7,8 +7,8 @@ import { formatDuration, truncate } from '../utils/format';
 export class QueueCommand implements ICommand {
   readonly name = 'queue';
   readonly aliases = ['q', 'fila'] as const;
-  readonly description = 'Lista a faixa atual e as próximas da fila.';
-  readonly usage = '!queue';
+  readonly description = 'Mostra a faixa atual e as próximas da fila.';
+  readonly usage = '';
 
   private static readonly MAX_LISTED = 10;
 

@@ -6,8 +6,8 @@ import { QueueManager } from '../services/QueueManager';
 export class ShuffleCommand implements ICommand {
   readonly name = 'shuffle';
   readonly aliases = ['embaralhar', 'sh'] as const;
-  readonly description = 'Embaralha a ordem das próximas faixas.';
-  readonly usage = '!shuffle';
+  readonly description = 'Embaralha a ordem das próximas faixas da fila.';
+  readonly usage = '';
 
   constructor(private readonly queueManager: QueueManager) {}
 

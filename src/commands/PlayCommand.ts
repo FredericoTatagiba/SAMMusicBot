@@ -7,8 +7,9 @@ import { QueueManager } from '../services/QueueManager';
 export class PlayCommand implements ICommand {
   readonly name = 'play';
   readonly aliases = ['p', 'tocar'] as const;
-  readonly description = 'Toca uma faixa por nome ou link (YouTube, Spotify, SoundCloud).';
-  readonly usage = '!play <nome ou link>';
+  readonly description =
+    'Toca uma música por nome ou link (YouTube, Spotify, SoundCloud). Se já houver algo tocando, adiciona à fila.';
+  readonly usage = '<nome ou link>';
 
   constructor(
     private readonly search: SearchService,
@@ -21,7 +22,7 @@ export class PlayCommand implements ICommand {
     }
     const query = ctx.args.join(' ').trim();
     if (query.length === 0) {
-      throw new CommandError(`Uso: ${this.usage}`);
+      throw new CommandError(`Uso: ${this.name} ${this.usage}`);
     }
 
     const tracks = await this.search.search(query);

@@ -48,7 +48,7 @@ export function createMusicBot(config: BotConfig = loadConfig()): MusicBot {
   const youtube = new YouTubeProvider();
   const providers: readonly ISourceProvider[] = [
     youtube,
-    new SpotifyProvider(config.spotify),
+    new SpotifyProvider(),
     new SoundCloudProvider(),
   ];
 

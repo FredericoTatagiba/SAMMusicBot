@@ -6,8 +6,9 @@ import { QueueManager } from '../services/QueueManager';
 export class StopCommand implements ICommand {
   readonly name = 'stop';
   readonly aliases = ['parar', 'leave', 'sair', 'x'] as const;
-  readonly description = 'Para tudo, limpa a fila e sai do canal de voz.';
-  readonly usage = '!stop';
+  readonly description =
+    'Para a reprodução, limpa a fila e sai do canal de voz.';
+  readonly usage = '';
 
   constructor(private readonly queueManager: QueueManager) {}
 

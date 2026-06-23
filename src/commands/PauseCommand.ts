@@ -6,8 +6,8 @@ import { QueueManager } from '../services/QueueManager';
 export class PauseCommand implements ICommand {
   readonly name = 'pause';
   readonly aliases = ['pausar', 'pa'] as const;
-  readonly description = 'Pausa a faixa atual.';
-  readonly usage = '!pause';
+  readonly description = 'Pausa a música que está tocando.';
+  readonly usage = '';
 
   constructor(private readonly queueManager: QueueManager) {}
 

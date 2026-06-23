@@ -1,62 +1,44 @@
-import { SpotifyProvider } from '../../src/providers/spotify/SpotifyProvider';
 import { TrackNotFoundError } from '../../src/core/errors';
+import {
+  SpotifyProvider,
+  SpotifyScraper,
+} from '../../src/providers/spotify/SpotifyProvider';
 
-const creds = { clientId: 'id', clientSecret: 'sec' };
+describe('SpotifyProvider (robustez)', () => {
+  it('filtra faixas sem nome e aplica defaults nas demais', async () => {
+    const scraper: SpotifyScraper = {
+      getDetails: jest.fn().mockResolvedValue({
+        tracks: [{ uri: 'spotify:track:x' }, { name: 'OK', uri: 'spotify:track:ok' }],
+      }),
+    };
+    const provider = new SpotifyProvider(scraper);
 
-/** fetch falso: primeira chamada = token; demais = recursos, em ordem. */
-function makeFetch(...payloads: unknown[]): typeof fetch {
-  const fn = jest.fn();
-  for (const payload of payloads) {
-    fn.mockResolvedValueOnce({
-      ok: true,
-      json: async () => payload,
-    } as unknown as Response);
-  }
-  return fn as unknown as typeof fetch;
-}
+    const tracks = await provider.resolve('https://open.spotify.com/playlist/xyz');
 
-describe('SpotifyProvider (robustez contra respostas malformadas)', () => {
-  it('álbum sem "tracks" não quebra — vira TrackNotFoundError', async () => {
-    const fetchFn = makeFetch({ access_token: 'tok' }, { images: [] });
-    const provider = new SpotifyProvider(creds, fetchFn);
+    expect(tracks).toHaveLength(1);
+    expect(tracks[0]!.title).toBe('OK');
+    expect(tracks[0]!.author).toBe('Desconhecido');
+  });
+
+  it('lança TrackNotFoundError quando não há faixas', async () => {
+    const scraper: SpotifyScraper = {
+      getDetails: jest.fn().mockResolvedValue({ tracks: [] }),
+    };
+    const provider = new SpotifyProvider(scraper);
+
     await expect(
-      provider.resolve('https://open.spotify.com/album/abc'),
+      provider.resolve('https://open.spotify.com/playlist/xyz'),
     ).rejects.toBeInstanceOf(TrackNotFoundError);
   });
 
-  it('playlist filtra itens sem faixa válida (null/episódio)', async () => {
-    const fetchFn = makeFetch(
-      { access_token: 'tok' },
-      {
-        tracks: {
-          items: [
-            { track: null },
-            { track: { type: 'episode' } },
-            {
-              track: {
-                id: '1',
-                name: 'A',
-                artists: [{ name: 'X' }],
-                duration_ms: 1000,
-                external_urls: { spotify: 'u' },
-              },
-            },
-          ],
-        },
-      },
-    );
-    const provider = new SpotifyProvider(creds, fetchFn);
-    const tracks = await provider.resolve('https://open.spotify.com/playlist/abc');
-    expect(tracks).toHaveLength(1);
-    expect(tracks[0]!.title).toBe('A');
-  });
+  it('lança TrackNotFoundError quando a extração falha', async () => {
+    const scraper: SpotifyScraper = {
+      getDetails: jest.fn().mockRejectedValue(new Error('falha de scraping')),
+    };
+    const provider = new SpotifyProvider(scraper);
 
-  it('faixa com campos ausentes usa defaults sem quebrar', async () => {
-    const fetchFn = makeFetch({ access_token: 'tok' }, { id: '2' });
-    const provider = new SpotifyProvider(creds, fetchFn);
-    const tracks = await provider.resolve('https://open.spotify.com/track/abc');
-    expect(tracks).toHaveLength(1);
-    expect(tracks[0]!.title).toBe('Desconhecido');
-    expect(tracks[0]!.author).toBe('Desconhecido');
+    await expect(
+      provider.resolve('https://open.spotify.com/playlist/xyz'),
+    ).rejects.toBeInstanceOf(TrackNotFoundError);
   });
 });

@@ -13,8 +13,9 @@ const MODE_LABELS: Record<LoopMode, string> = {
 export class LoopCommand implements ICommand {
   readonly name = 'loop';
   readonly aliases = ['repeat', 'repetir', 'l'] as const;
-  readonly description = 'Define a repetição: off, track ou queue.';
-  readonly usage = '!loop <off|track|queue>';
+  readonly description =
+    'Define a repetição: off (desliga), track (repete a faixa atual) ou queue (repete a fila inteira).';
+  readonly usage = '<off|track|queue>';
 
   constructor(private readonly queueManager: QueueManager) {}
 
@@ -31,7 +32,7 @@ export class LoopCommand implements ICommand {
   private parseMode(raw: string | undefined): LoopMode {
     const allowed = Object.values(LoopMode) as string[];
     if (!raw || !allowed.includes(raw.toLowerCase())) {
-      throw new CommandError(`Uso: ${this.usage}`);
+      throw new CommandError(`Uso: ${this.name} ${this.usage}`);
     }
     return raw.toLowerCase() as LoopMode;
   }

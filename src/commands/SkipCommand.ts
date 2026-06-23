@@ -6,8 +6,8 @@ import { QueueManager } from '../services/QueueManager';
 export class SkipCommand implements ICommand {
   readonly name = 'skip';
   readonly aliases = ['s', 'pular', 'next'] as const;
-  readonly description = 'Pula a faixa que está tocando.';
-  readonly usage = '!skip';
+  readonly description = 'Pula a faixa atual e toca a próxima da fila.';
+  readonly usage = '';
 
   constructor(private readonly queueManager: QueueManager) {}
 
