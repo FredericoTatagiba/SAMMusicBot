@@ -61,13 +61,18 @@ export class ExecYtDlpMetadataClient implements YtDlpMetadataClient {
     // O youtube-dl-exec transforma um booleano `false` na flag negada do yt-dlp
     // (ex.: `noPlaylist: false` vira `--no-no-playlist`, que é inválida).
     // Por isso só incluímos as flags booleanas opcionais quando verdadeiras.
-    const payload = await youtubedl(target, {
-      dumpSingleJson: true,
-      noWarnings: true,
-      quiet: true,
-      ...(options.flatPlaylist ? { flatPlaylist: true } : {}),
-      ...(options.noPlaylist ? { noPlaylist: true } : {}),
-    });
+    const payload = await youtubedl(
+      target,
+      {
+        dumpSingleJson: true,
+        noWarnings: true,
+        quiet: true,
+        ...(options.flatPlaylist ? { flatPlaylist: true } : {}),
+        ...(options.noPlaylist ? { noPlaylist: true } : {}),
+      },
+      // windowsHide evita que a janela de console do yt-dlp pisque no Windows.
+      { windowsHide: true },
+    );
 
     // Com `dumpSingleJson`, o youtube-dl-exec resolve o stdout já parseado.
     return payload as unknown as YtDlpInfo;
