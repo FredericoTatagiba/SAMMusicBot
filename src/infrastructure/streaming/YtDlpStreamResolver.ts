@@ -1,7 +1,11 @@
 import youtubedl from 'youtube-dl-exec';
+import { ILogger } from '../../core/interfaces/ILogger';
 import { IStreamResolver } from '../../core/interfaces/IStreamResolver';
 import { AudioStream, AudioStreamType, SourceType, Track } from '../../core/types';
 import { StreamResolutionError } from '../../core/errors';
+
+/** Quantidade máxima de bytes de stderr mantidos para diagnóstico. */
+const STDERR_TAIL_LIMIT = 2000;
 
 /**
  * Resolve o áudio usando o yt-dlp (via youtube-dl-exec).
@@ -12,6 +16,8 @@ import { StreamResolutionError } from '../../core/errors';
  * @discordjs/voice (o ffmpeg transcodifica). Tudo atrás de IStreamResolver.
  */
 export class YtDlpStreamResolver implements IStreamResolver {
+  constructor(private readonly logger: ILogger) {}
+
   async resolve(track: Track): Promise<AudioStream> {
     const target = this.buildTarget(track);
     try {
@@ -24,8 +30,9 @@ export class YtDlpStreamResolver implements IStreamResolver {
           noWarnings: true,
           noPlaylist: true,
         },
-        // windowsHide impede que a janela de console do yt-dlp apareça no Windows.
-        { stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true },
+        // stderr em 'pipe' para podermos diagnosticar falhas do yt-dlp;
+        // windowsHide impede que a janela de console apareça no Windows.
+        { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true },
       );
 
       const stream = subprocess.stdout;
@@ -34,8 +41,8 @@ export class YtDlpStreamResolver implements IStreamResolver {
         throw new Error('yt-dlp não produziu stream de áudio.');
       }
 
-      // Evita "unhandled rejection" quando o processo é encerrado ao pular/parar.
-      subprocess.catch(() => undefined);
+      this.attachDiagnostics(subprocess, track);
+
       // Encerra o yt-dlp quando o stream fecha, evitando processos órfãos.
       stream.once('close', () => {
         if (!subprocess.killed) {
@@ -49,6 +56,32 @@ export class YtDlpStreamResolver implements IStreamResolver {
         `Não foi possível obter o áudio de "${track.title}": ${(error as Error).message}`,
       );
     }
+  }
+
+  /**
+   * Coleta o stderr do yt-dlp e o registra caso o processo termine com erro.
+   * Antes, esse erro era silenciosamente engolido, escondendo a causa real de
+   * faixas que "tocavam" mas não emitiam áudio.
+   */
+  private attachDiagnostics(
+    subprocess: ReturnType<typeof youtubedl.exec>,
+    track: Track,
+  ): void {
+    let stderrTail = '';
+    subprocess.stderr?.on('data', (chunk: Buffer) => {
+      stderrTail = (stderrTail + chunk.toString()).slice(-STDERR_TAIL_LIMIT);
+    });
+
+    // Trata a rejeição do processo (saída != 0) logando — sem mais engolir.
+    subprocess.catch((error: Error) => {
+      const detail = stderrTail.trim();
+      this.logger.warn('yt-dlp encerrou com erro ao transmitir áudio', {
+        title: track.title,
+        source: track.source,
+        error: error.message,
+        ...(detail ? { stderr: detail } : {}),
+      });
+    });
   }
 
   /** YouTube e SoundCloud usam a URL; Spotify vira busca no YouTube. */

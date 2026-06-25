@@ -53,8 +53,8 @@ export function createMusicBot(config: BotConfig = loadConfig()): MusicBot {
   ];
 
   const searchService = new SearchService(providers, youtube, logger);
-  const streamResolver = new YtDlpStreamResolver();
-  const connector = new DiscordVoiceConnector(client);
+  const streamResolver = new YtDlpStreamResolver(logger);
+  const connector = new DiscordVoiceConnector(client, logger);
   const queueManager = new QueueManager(
     connector,
     streamResolver,
