@@ -71,6 +71,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): BotConfig {
       env.IDLE_DISCONNECT_MS,
       10_000,
     ),
+    emptyChannelTimeoutMs: parsePositiveInt(
+      'EMPTY_CHANNEL_TIMEOUT_MS',
+      env.EMPTY_CHANNEL_TIMEOUT_MS,
+      20_000,
+    ),
     logLevel: parseLogLevel(env.LOG_LEVEL),
     allowedGuildIds: parseList(env.ALLOWED_GUILD_IDS),
   };

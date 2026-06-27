@@ -2,6 +2,7 @@ import { Client, Events } from 'discord.js';
 import { ILogger } from '../core/interfaces/ILogger';
 import { DiscordMessageHandler } from '../discord/DiscordMessageHandler';
 import { GuildGuard } from '../discord/GuildGuard';
+import { AloneVoiceWatcher } from '../discord/AloneVoiceWatcher';
 
 /**
  * Fachada do ciclo de vida do bot: registra os handlers e gerencia
@@ -12,6 +13,7 @@ export class MusicBot {
     private readonly client: Client,
     private readonly messageHandler: DiscordMessageHandler,
     private readonly guildGuard: GuildGuard,
+    private readonly aloneWatcher: AloneVoiceWatcher,
     private readonly token: string,
     private readonly logger: ILogger,
   ) {}
@@ -24,6 +26,7 @@ export class MusicBot {
       this.logger.error('Erro no cliente do Discord', { error: error.message });
     });
     this.guildGuard.register();
+    this.aloneWatcher.register();
     this.messageHandler.register();
     await this.client.login(this.token);
   }

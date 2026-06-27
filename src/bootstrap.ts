@@ -25,6 +25,7 @@ import { DiscordMessageHandler } from './discord/DiscordMessageHandler';
 import { GuildGuard } from './discord/GuildGuard';
 import { AllowlistGuildAccessPolicy } from './security/AllowlistGuildAccessPolicy';
 import { DiscordVoiceConnector } from './voice/DiscordVoiceConnector';
+import { AloneVoiceWatcher } from './discord/AloneVoiceWatcher';
 import { MusicBot } from './bot/MusicBot';
 
 /**
@@ -88,10 +89,18 @@ export function createMusicBot(config: BotConfig = loadConfig()): MusicBot {
     accessPolicy,
   );
 
+  const aloneWatcher = new AloneVoiceWatcher(
+    client,
+    (guildId) => queueManager.get(guildId)?.stop(),
+    logger,
+    config.emptyChannelTimeoutMs,
+  );
+
   return new MusicBot(
     client,
     messageHandler,
     guildGuard,
+    aloneWatcher,
     config.discordToken,
     logger,
   );

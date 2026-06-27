@@ -13,6 +13,8 @@ export interface BotConfig {
   readonly spotify: SpotifyCredentials;
   readonly maxQueueSize: number;
   readonly idleDisconnectMs: number;
+  /** Tempo (ms) sozinho no canal de voz antes de parar a reprodução. */
+  readonly emptyChannelTimeoutMs: number;
   readonly logLevel: LogLevel;
   /** IDs dos servidores autorizados. Vazio = sem restrição. */
   readonly allowedGuildIds: readonly string[];
