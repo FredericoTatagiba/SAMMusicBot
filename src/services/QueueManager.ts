@@ -28,6 +28,11 @@ export class QueueManager {
     if (existing) {
       return existing;
     }
+    // O dispose só remove ESTE serviço (checagem de identidade). Sem isto, o
+    // teardown tardio de um serviço antigo apagava do mapa o serviço novo que
+    // já o substituiu, deixando uma conexão órfã (música tocando, mas os
+    // comandos respondendo "nada tocando"). O closure roda no descarte, bem
+    // depois de `service` estar inicializada.
     const service = new GuildMusicService(
       guildId,
       new MusicQueue(this.maxQueueSize),
@@ -35,7 +40,11 @@ export class QueueManager {
       this.streamResolver,
       this.logger.child({ guildId }),
       this.idleDisconnectMs,
-      (id) => this.services.delete(id),
+      (id) => {
+        if (this.services.get(id) === service) {
+          this.services.delete(id);
+        }
+      },
     );
     this.services.set(guildId, service);
     return service;

@@ -29,7 +29,12 @@ export class GuildMusicService {
   private player: IAudioPlayer | null = null;
   private isPlaying = false;
   private advancing = false;
+  private disposed = false;
   private idleTimer: NodeJS.Timeout | null = null;
+  // Serializa as transições de reprodução. Sem isto, um `enqueue` e o fim de
+  // uma faixa (idle/error) podiam correr em paralelo nos gaps de `await`,
+  // duplicando avanços ou deixando uma conexão órfã fora do QueueManager.
+  private opChain: Promise<unknown> = Promise.resolve();
 
   constructor(
     private readonly guildId: string,
@@ -47,22 +52,29 @@ export class GuildMusicService {
     voiceChannelId: string,
     requestedById: string,
   ): Promise<EnqueueResult> {
-    tracks.forEach((track) => {
-      track.requestedById = requestedById;
-    });
-    this.queue.addMany(tracks);
-    this.ensureConnected(voiceChannelId);
+    // Cancela QUALQUER desconexão por ociosidade agendada antes de qualquer
+    // `await`. Roda na mesma pilha síncrona da chamada, então vence a corrida
+    // contra o timer de idle (microtasks/sync executam antes do setTimeout).
+    this.cancelIdleDisconnect();
+    return this.runExclusive(async () => {
+      this.cancelIdleDisconnect();
+      tracks.forEach((track) => {
+        track.requestedById = requestedById;
+      });
+      this.queue.addMany(tracks);
+      this.ensureConnected(voiceChannelId);
 
-    if (!this.isPlaying) {
-      await this.playNext();
-      return { startedPlayback: true, added: tracks.length };
-    }
-    return { startedPlayback: false, added: tracks.length };
+      if (!this.isPlaying) {
+        await this.playNext();
+        return { startedPlayback: this.isPlaying, added: tracks.length };
+      }
+      return { startedPlayback: false, added: tracks.length };
+    });
   }
 
-  /** Pula a faixa atual. Retorna false se nada estava tocando. */
+  /** Pula a faixa atual. Retorna false se não há faixa atual para pular. */
   skip(): boolean {
-    if (!this.isPlaying || !this.player) {
+    if (!this.player || this.queue.getCurrent() === null) {
       return false;
     }
     // stop() dispara o evento idle, que avança para a próxima faixa.
@@ -109,30 +121,54 @@ export class GuildMusicService {
       channelId: voiceChannelId,
     });
     this.player.onIdle(() => {
-      void this.handleTrackEnd();
+      this.handleTrackEnd();
     });
     this.player.onError((error) => {
       this.logger.error('Erro no player de áudio', { error: error.message });
-      void this.handleTrackEnd();
+      this.handleTrackEnd();
     });
   }
 
-  private async handleTrackEnd(): Promise<void> {
-    // Guarda contra avanço duplo: ao falhar, o player pode emitir 'error' e
-    // 'idle' quase juntos; sem isto, pularíamos duas faixas de uma vez.
-    if (this.advancing) {
+  /**
+   * Reage ao fim (ou erro) da faixa atual avançando para a próxima.
+   *
+   * `advancing` é marcado de forma SÍNCRONA para descartar o evento duplo
+   * ('error' seguido de 'idle' na mesma falha). O avanço em si entra na fila
+   * serial (`runExclusive`), nunca correndo em paralelo com um `enqueue`.
+   */
+  private handleTrackEnd(): void {
+    if (this.disposed || this.advancing) {
       return;
     }
     this.advancing = true;
     this.isPlaying = false;
-    try {
-      await this.playNext();
-    } finally {
-      this.advancing = false;
-    }
+    void this.runExclusive(async () => {
+      try {
+        await this.playNext();
+      } finally {
+        this.advancing = false;
+      }
+    });
+  }
+
+  /**
+   * Encadeia operações de reprodução numa fila serial. Garante que enqueue,
+   * avanço de faixa e suas resoluções de stream nunca se intercalem.
+   */
+  private runExclusive<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.opChain.then(operation);
+    // Mantém a cadeia viva mesmo que uma operação rejeite.
+    this.opChain = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
   }
 
   private async playNext(): Promise<void> {
+    if (this.disposed) {
+      return;
+    }
     const track = this.queue.next();
     if (!track || !this.player) {
       this.isPlaying = false;
@@ -158,8 +194,16 @@ export class GuildMusicService {
   }
 
   private scheduleIdleDisconnect(): void {
+    if (this.disposed) {
+      return;
+    }
     this.cancelIdleDisconnect();
     this.idleTimer = setTimeout(() => {
+      // Reentrância: só desconecta se continuar ocioso. Um enqueue posterior
+      // cancela o timer, mas guardamos contra o callback já enfileirado.
+      if (this.disposed || this.isPlaying) {
+        return;
+      }
       this.logger.info('Desconectando por inatividade');
       this.teardown();
     }, this.idleDisconnectMs);
@@ -175,6 +219,10 @@ export class GuildMusicService {
   }
 
   private teardown(): void {
+    if (this.disposed) {
+      return;
+    }
+    this.disposed = true;
     this.cancelIdleDisconnect();
     this.isPlaying = false;
     this.player?.destroy();

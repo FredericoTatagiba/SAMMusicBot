@@ -34,4 +34,21 @@ describe('QueueManager', () => {
     manager.getOrCreate('g1');
     expect(manager.get('g1')).not.toBeNull();
   });
+
+  it('descarte de serviço antigo não remove o serviço que o substituiu', () => {
+    const manager = buildManager();
+    const s1 = manager.getOrCreate('g1');
+
+    // s1 se auto-descarta (stop/idle) e sai do mapa.
+    s1.stop();
+    expect(manager.get('g1')).toBeNull();
+
+    // Um novo serviço assume o servidor.
+    const s2 = manager.getOrCreate('g1');
+    expect(s2).not.toBe(s1);
+
+    // Um descarte tardio/repetido de s1 NÃO pode evictar s2 (regressão órfã).
+    s1.stop();
+    expect(manager.get('g1')).toBe(s2);
+  });
 });
