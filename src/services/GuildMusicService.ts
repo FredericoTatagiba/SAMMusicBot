@@ -77,8 +77,12 @@ export class GuildMusicService {
     if (!this.player || this.queue.getCurrent() === null) {
       return false;
     }
-    // stop() dispara o evento idle, que avança para a próxima faixa.
+    // Interrompe o áudio atual e avança de forma determinística. Não dá para
+    // depender apenas do 'idle' que o stop dispara: se o player já estiver
+    // ocioso (janela entre faixas), o stop vira no-op e o skip se perdia. O
+    // guard `advancing` garante um único avanço mesmo quando o 'idle' chega.
     this.player.stop();
+    this.advanceToNext();
     return true;
   }
 
@@ -121,22 +125,25 @@ export class GuildMusicService {
       channelId: voiceChannelId,
     });
     this.player.onIdle(() => {
-      this.handleTrackEnd();
+      this.advanceToNext();
     });
     this.player.onError((error) => {
       this.logger.error('Erro no player de áudio', { error: error.message });
-      this.handleTrackEnd();
+      this.advanceToNext();
+    });
+    this.player.onDisconnect(() => {
+      this.handleDisconnect();
     });
   }
 
   /**
-   * Reage ao fim (ou erro) da faixa atual avançando para a próxima.
-   *
-   * `advancing` é marcado de forma SÍNCRONA para descartar o evento duplo
-   * ('error' seguido de 'idle' na mesma falha). O avanço em si entra na fila
+   * Avança para a próxima faixa após o fim (idle), um erro de reprodução ou um
+   * skip. `advancing` é marcado de forma SÍNCRONA para descartar avanços
+   * duplicados — o par 'error'+'idle' de uma mesma falha, ou o 'idle' que o
+   * próprio skip provoca ao parar o player. O avanço em si entra na fila
    * serial (`runExclusive`), nunca correndo em paralelo com um `enqueue`.
    */
-  private handleTrackEnd(): void {
+  private advanceToNext(): void {
     if (this.disposed || this.advancing) {
       return;
     }
@@ -149,6 +156,21 @@ export class GuildMusicService {
         this.advancing = false;
       }
     });
+  }
+
+  /**
+   * Reage ao encerramento definitivo da conexão de voz (queda sem retorno,
+   * kick do bot). Sem isto, o serviço permanecia registrado no QueueManager
+   * com um player morto: `ensureConnected` via `this.player` != null e nunca
+   * reconectava, então o bot só voltava sendo removido e readicionado. O
+   * teardown o remove do mapa; o próximo comando cria um serviço novo.
+   */
+  private handleDisconnect(): void {
+    if (this.disposed) {
+      return;
+    }
+    this.logger.warn('Conexão de voz encerrada; liberando o serviço');
+    this.teardown();
   }
 
   /**

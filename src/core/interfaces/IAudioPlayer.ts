@@ -21,6 +21,13 @@ export interface IAudioPlayer {
   onIdle(listener: () => void): void;
   /** Registra callback de erro de reprodução. */
   onError(listener: (error: Error) => void): void;
+  /**
+   * Registra callback disparado quando a conexão de voz é encerrada por fora
+   * do nosso controle (queda de rede sem retorno, kick do bot, região de voz
+   * que não se restabeleceu). Permite ao serviço liberar recursos em vez de
+   * ficar preso a uma conexão morta.
+   */
+  onDisconnect(listener: () => void): void;
   /** Encerra player e conexão de voz, liberando recursos. */
   destroy(): void;
 }

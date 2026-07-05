@@ -21,6 +21,7 @@ export class FakeAudioPlayer implements IAudioPlayer {
   lastAudio: AudioStream | null = null;
   private idleListener: (() => void) | null = null;
   private errorListener: ((error: Error) => void) | null = null;
+  private disconnectListener: (() => void) | null = null;
   private paused = false;
 
   play(audio: AudioStream): void {
@@ -48,6 +49,9 @@ export class FakeAudioPlayer implements IAudioPlayer {
   onError(listener: (error: Error) => void): void {
     this.errorListener = listener;
   }
+  onDisconnect(listener: () => void): void {
+    this.disconnectListener = listener;
+  }
   destroy(): void {
     this.destroyed = true;
   }
@@ -58,6 +62,10 @@ export class FakeAudioPlayer implements IAudioPlayer {
   /** Simula um erro de reprodução. */
   emitError(error: Error): void {
     this.errorListener?.(error);
+  }
+  /** Simula a queda definitiva da conexão de voz (Destroyed). */
+  emitDisconnect(): void {
+    this.disconnectListener?.();
   }
 }
 

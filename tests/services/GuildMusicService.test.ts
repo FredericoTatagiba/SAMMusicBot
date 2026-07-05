@@ -8,6 +8,15 @@ import {
   makeTrack,
 } from '../helpers/fakes';
 
+/**
+ * Player cujo stop() NÃO dispara 'idle' — reproduz o player real quando já
+ * está ocioso (janela entre faixas). Serve para provar que o skip avança por
+ * conta própria, sem depender do efeito colateral do 'idle'.
+ */
+class SilentStopPlayer extends FakeAudioPlayer {
+  override stop(): void {}
+}
+
 function buildService(options: {
   player?: FakeAudioPlayer;
   resolver?: FakeStreamResolver;
@@ -190,5 +199,57 @@ describe('GuildMusicService', () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+
+  it('libera o serviço quando a conexão de voz cai (não vira zumbi)', async () => {
+    const disposed: string[] = [];
+    const { service, player } = buildService({
+      onDispose: (id) => disposed.push(id),
+    });
+    await service.enqueue(
+      [makeTrack({ id: 'a' }), makeTrack({ id: 'b' })],
+      'voice-1',
+      'u',
+    );
+
+    // A conexão cai por fora (queda sem retorno / kick do bot).
+    player.emitDisconnect();
+
+    // Serviço se auto-descarta: player destruído, removido do QueueManager e
+    // inerte (skip não faz mais nada), para o próximo comando criar um novo.
+    expect(player.destroyed).toBe(true);
+    expect(disposed).toEqual(['guild-1']);
+    expect(service.skip()).toBe(false);
+  });
+
+  it('descarta o serviço só uma vez mesmo se a queda chegar após o stop', async () => {
+    const disposed: string[] = [];
+    const { service, player } = buildService({
+      onDispose: (id) => disposed.push(id),
+    });
+    await service.enqueue([makeTrack()], 'voice-1', 'u');
+
+    service.stop(); // já dispara o teardown
+    player.emitDisconnect(); // o Destroyed que o destroy() provoca não pode redisparar
+
+    expect(disposed).toEqual(['guild-1']);
+  });
+
+  it('skip avança mesmo quando o stop não dispara idle (não depende do efeito colateral)', async () => {
+    const player = new SilentStopPlayer();
+    const { service } = buildService({ player });
+    await service.enqueue(
+      [makeTrack({ id: 'a' }), makeTrack({ id: 'b' })],
+      'voice-1',
+      'u',
+    );
+    expect(player.playCount).toBe(1);
+
+    expect(service.skip()).toBe(true);
+    await flushMicrotasks();
+
+    // Sem o avanço explícito, 'a' seguiria como atual e nada tocaria.
+    expect(player.playCount).toBe(2);
+    expect(service.snapshot().current?.id).toBe('b');
   });
 });
