@@ -14,6 +14,8 @@ export class PlayCommand implements ICommand {
   constructor(
     private readonly search: SearchService,
     private readonly queueManager: QueueManager,
+    // Chamado antes de tocar: para a rádio do servidor (exclusão mútua da voz).
+    private readonly onBeforePlay: (guildId: string) => void = () => {},
   ) {}
 
   async execute(ctx: ICommandContext): Promise<void> {
@@ -26,6 +28,7 @@ export class PlayCommand implements ICommand {
     }
 
     const tracks = await this.search.search(query);
+    this.onBeforePlay(ctx.guildId);
     const service = this.queueManager.getOrCreate(ctx.guildId);
     const result = await service.enqueue(tracks, ctx.voiceChannelId, ctx.userId);
 

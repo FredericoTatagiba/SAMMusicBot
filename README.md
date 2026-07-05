@@ -37,6 +37,40 @@ O prefixo (`!`) é configurável via `COMMAND_PREFIX`.
 
 ---
 
+## 📻 Rádio
+
+Além da música, o bot toca **rádios ao vivo do mundo todo** (via [Radio Garden](https://radio.garden/)). É um módulo à parte que usa o **mesmo prefixo da música** (`COMMAND_PREFIX`).
+
+Rádio e música dividem a conexão de voz, então são **mutuamente exclusivos**: iniciar uma rádio para a música e vice-versa.
+
+| Comando | Exemplo | O que faz |
+| --- | --- | --- |
+| `!radio <país>` | `!radio Brazil` | Mostra as rádios **populares do país** num menu; um botão permite **explorar por cidade**. |
+| `!radio buscar <termo>` | `!radio buscar jazz` | **Busca livre** por estação/cidade e lista os resultados num menu. |
+| `!radio <termo>` | `!radio lofi` | Se o texto não casar um país, cai na busca livre (ou na cidade encontrada). |
+| `!radio parar` | `!radio parar` | Para a rádio e sai do canal de voz. |
+| `!radio` | `!radio` | Mostra a ajuda da rádio. |
+
+Atalhos curtos: `!r` = `!radio` · `!radio b <termo>` = `!radio buscar` · `!radio p` = `!radio parar` (ex.: `!r Tokyo`, `!radio b jazz`, `!radio p`).
+
+### Como usar (passo a passo)
+
+1. Entre num canal de voz.
+2. Digite `!radio Brazil` (por país) ou `!radio buscar <termo>` (busca livre).
+3. Escolha a estação no **menu suspenso** que o bot enviar. No fluxo por país, clique em **Explorar cidades** para descer país → cidade → estação.
+4. O bot entra no canal e transmite ao vivo; use o botão **Parar** (ou `!radio parar`) para encerrar.
+
+> Os menus respondem apenas a quem chamou o comando, e é preciso estar num canal de voz para tocar.
+
+A rádio não tem prefixo próprio — usa o `COMMAND_PREFIX`. A única variável dedicada é a base da API (opcional):
+
+```env
+# O padrão já funciona; troque só se usar um proxy da API
+RADIO_API_BASE_URL=https://radio.garden/api
+```
+
+---
+
 ## Arquitetura
 
 O projeto segue uma **arquitetura em camadas** com dependências apontando sempre para o centro (regras de negócio), nunca para a infraestrutura — o **Dependency Inversion Principle** na prática.

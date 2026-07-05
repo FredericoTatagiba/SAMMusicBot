@@ -26,6 +26,12 @@ import { GuildGuard } from './discord/GuildGuard';
 import { AllowlistGuildAccessPolicy } from './security/AllowlistGuildAccessPolicy';
 import { DiscordVoiceConnector } from './voice/DiscordVoiceConnector';
 import { AloneVoiceWatcher } from './discord/AloneVoiceWatcher';
+import { RadioGardenClient } from './radio/RadioGardenClient';
+import { RadioStreamResolver } from './radio/RadioStreamResolver';
+import { RadioManager } from './radio/RadioManager';
+import { RadioService } from './radio/RadioService';
+import { RadioMessageHandler } from './radio/RadioMessageHandler';
+import { RadioInteractionHandler } from './radio/RadioInteractionHandler';
 import { MusicBot } from './bot/MusicBot';
 
 /**
@@ -64,9 +70,59 @@ export function createMusicBot(config: BotConfig = loadConfig()): MusicBot {
     config.idleDisconnectMs,
   );
 
+  const accessPolicy = new AllowlistGuildAccessPolicy(config.allowedGuildIds);
+
+  // ----- Módulo de rádio (apartado; reaproveita a camada de voz) -----
+  const radioLogger = logger.child({ module: 'radio' });
+  const radioManager = new RadioManager(
+    connector,
+    new RadioStreamResolver(config.radioApiBaseUrl, radioLogger),
+    radioLogger,
+  );
+  const radioService = new RadioService(
+    new RadioGardenClient(config.radioApiBaseUrl, radioLogger),
+    radioManager,
+    radioLogger,
+    // Iniciar a rádio para a música do servidor (exclusão mútua da voz).
+    (guildId) => {
+      queueManager.get(guildId)?.stop();
+    },
+  );
+  // A rádio usa o MESMO prefixo da música (config.commandPrefix). O dispatcher
+  // da música ignora comando desconhecido, então `radio` não conflita.
+  const radioMessageHandler = new RadioMessageHandler(
+    client,
+    radioService,
+    config.commandPrefix,
+    accessPolicy,
+    radioLogger,
+  );
+  const radioInteractionHandler = new RadioInteractionHandler(
+    client,
+    radioService,
+    radioLogger,
+  );
+  radioMessageHandler.register();
+  radioInteractionHandler.register();
+
+  // Atalhos da rádio para o `help` (a rádio compartilha o prefixo da música).
+  const p = config.commandPrefix;
+  const radioHelp = [
+    '',
+    '📻 **Rádio:**',
+    `\`${p}radio <país>\` _(${p}r)_ — rádios ao vivo do país (ex.: \`${p}radio Brazil\`)`,
+    `\`${p}radio buscar <termo>\` _(${p}radio b)_ — busca livre por estação/cidade`,
+    `\`${p}radio parar\` _(${p}radio p)_ — para a rádio e sai do canal`,
+  ];
+
   const registry = new CommandRegistry();
   registry
-    .register(new PlayCommand(searchService, queueManager))
+    .register(
+      // Iniciar música para a rádio do servidor (exclusão mútua da voz).
+      new PlayCommand(searchService, queueManager, (guildId) => {
+        radioManager.get(guildId)?.stop();
+      }),
+    )
     .register(new SkipCommand(queueManager))
     .register(new StopCommand(queueManager))
     .register(new PauseCommand(queueManager))
@@ -75,10 +131,9 @@ export function createMusicBot(config: BotConfig = loadConfig()): MusicBot {
     .register(new NowPlayingCommand(queueManager))
     .register(new LoopCommand(queueManager))
     .register(new ShuffleCommand(queueManager))
-    .register(new HelpCommand(registry, config.commandPrefix));
+    .register(new HelpCommand(registry, config.commandPrefix, radioHelp));
 
-  const accessPolicy = new AllowlistGuildAccessPolicy(config.allowedGuildIds);
-  const guildGuard = new GuildGuard(client, accessPolicy, logger);
+  const accessGuard = new GuildGuard(client, accessPolicy, logger);
 
   const dispatcher = new CommandDispatcher(registry, logger);
   const messageHandler = new DiscordMessageHandler(
@@ -99,7 +154,7 @@ export function createMusicBot(config: BotConfig = loadConfig()): MusicBot {
   return new MusicBot(
     client,
     messageHandler,
-    guildGuard,
+    accessGuard,
     aloneWatcher,
     config.discordToken,
     logger,

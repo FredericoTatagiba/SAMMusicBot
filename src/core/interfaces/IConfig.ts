@@ -10,6 +10,8 @@ export interface SpotifyCredentials {
 export interface BotConfig {
   readonly discordToken: string;
   readonly commandPrefix: string;
+  /** Base da API do Radio Garden (injetável para testes). */
+  readonly radioApiBaseUrl: string;
   readonly spotify: SpotifyCredentials;
   readonly maxQueueSize: number;
   readonly idleDisconnectMs: number;

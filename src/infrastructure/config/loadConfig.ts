@@ -3,6 +3,9 @@ import { BotConfig } from '../../core/interfaces/IConfig';
 import { ConfigurationError } from '../../core/errors';
 import { LogLevel } from '../../core/types';
 
+/** Base padrão da API do Radio Garden. */
+const DEFAULT_RADIO_API_URL = 'https://radio.garden/api';
+
 function requireEnv(name: string, env: NodeJS.ProcessEnv): string {
   const value = env[name];
   if (!value || value.trim().length === 0) {
@@ -58,9 +61,14 @@ function parseLogLevel(raw: string | undefined): LogLevel {
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): BotConfig {
   loadDotenv();
 
+  const commandPrefix = (env.COMMAND_PREFIX ?? '!').trim() || '!';
+
   return {
     discordToken: requireEnv('DISCORD_TOKEN', env),
-    commandPrefix: (env.COMMAND_PREFIX ?? '!').trim() || '!',
+    commandPrefix,
+    radioApiBaseUrl:
+      (env.RADIO_API_BASE_URL ?? DEFAULT_RADIO_API_URL).trim() ||
+      DEFAULT_RADIO_API_URL,
     spotify: {
       clientId: env.SPOTIFY_CLIENT_ID?.trim() || undefined,
       clientSecret: env.SPOTIFY_CLIENT_SECRET?.trim() || undefined,

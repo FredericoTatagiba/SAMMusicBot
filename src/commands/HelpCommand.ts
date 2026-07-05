@@ -11,11 +11,17 @@ export class HelpCommand implements ICommand {
   constructor(
     private readonly registry: CommandRegistry,
     private readonly prefix: string,
+    // Blocos extras de ajuda (ex.: comandos de rádio), já formatados.
+    private readonly extraSections: readonly string[] = [],
   ) {}
 
   async execute(ctx: ICommandContext): Promise<void> {
     const lines = this.registry.all().map((cmd) => this.formatLine(cmd));
-    await ctx.reply(['🎵 **Comandos disponíveis:**', ...lines].join('\n'));
+    await ctx.reply(
+      ['🎵 **Comandos disponíveis:**', ...lines, ...this.extraSections].join(
+        '\n',
+      ),
+    );
   }
 
   /** Monta o bloco do comando: nome, atalhos, descrição e exemplo de uso. */
