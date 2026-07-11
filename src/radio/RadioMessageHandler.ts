@@ -127,9 +127,9 @@ export class RadioMessageHandler {
     const p = this.prefix;
     return [
       '📻 **Rádio — como usar:**',
-      `\`${p}radio <país>\` — estações populares do país (ex.: \`${p}radio Brasil\`)`,
-      `\`${p}radio buscar <termo>\` — busca livre por estação/cidade (ex.: \`${p}radio buscar jazz\`)`,
-      `\`${p}radio parar\` — para a rádio e sai do canal`,
+      `\`${p}radio <país>\` — estações populares do país (ex.: \`${p}radio Brazil\`)`,
+      `\`${p}radio search <termo>\` — busca livre por estação/cidade (ex.: \`${p}radio search jazz\`)`,
+      `\`${p}radio stop\` — para a rádio e sai do canal`,
       'Depois é só escolher a estação no menu. Você precisa estar num canal de voz.',
     ].join('\n');
   }

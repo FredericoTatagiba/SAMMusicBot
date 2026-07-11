@@ -111,8 +111,8 @@ export function createMusicBot(config: BotConfig = loadConfig()): MusicBot {
     '',
     '📻 **Rádio:**',
     `\`${p}radio <país>\` _(${p}r)_ — rádios ao vivo do país (ex.: \`${p}radio Brazil\`)`,
-    `\`${p}radio buscar <termo>\` _(${p}radio b)_ — busca livre por estação/cidade`,
-    `\`${p}radio parar\` _(${p}radio p)_ — para a rádio e sai do canal`,
+    `\`${p}radio search <termo>\` _(${p}radio s)_ — busca livre por estação/cidade`,
+    `\`${p}radio stop\` — para a rádio e sai do canal`,
   ];
 
   const registry = new CommandRegistry();

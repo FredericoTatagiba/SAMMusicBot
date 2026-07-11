@@ -7,14 +7,15 @@ export type RadioAction =
   | { readonly kind: 'search'; readonly query: string }
   | { readonly kind: 'lookup'; readonly query: string };
 
-const STOP_WORDS = new Set(['parar', 'p', 'stop', 'sair']);
-const SEARCH_WORDS = new Set(['buscar', 'b', 'search', 'procurar']);
+const STOP_WORDS = new Set(['stop', 'parar', 'sair']);
+const SEARCH_WORDS = new Set(['search', 's', 'buscar', 'procurar']);
 
 /**
  * Parser puro dos comandos de rádio. Reaproveita o `parseCommand` (prefixo +
- * tokens) e só reage a `radio`/`r`. Decide entre ajuda, parar (`parar`/`p`),
- * busca livre (`buscar`/`b <termo>`) e o lookup híbrido (qualquer outro texto
- * = país/termo).
+ * tokens) e só reage a `radio`/`r`. Comandos canônicos em inglês
+ * (`search`/`stop`), com os equivalentes em português como alias. Decide entre
+ * ajuda, parar, busca livre (`search <termo>`) e o lookup híbrido (qualquer
+ * outro texto = país/termo).
  *
  * @returns null quando a mensagem não é um comando de rádio.
  */

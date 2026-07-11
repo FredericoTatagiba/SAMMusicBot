@@ -46,19 +46,19 @@ Rádio e música dividem a conexão de voz, então são **mutuamente exclusivos*
 | Comando | Exemplo | O que faz |
 | --- | --- | --- |
 | `!radio <país>` | `!radio Brazil` | Mostra as rádios **populares do país** num menu; um botão permite **explorar por cidade**. |
-| `!radio buscar <termo>` | `!radio buscar jazz` | **Busca livre** por estação/cidade e lista os resultados num menu. |
+| `!radio search <termo>` | `!radio search jazz` | **Busca livre** por estação/cidade e lista os resultados num menu. |
 | `!radio <termo>` | `!radio lofi` | Se o texto não casar um país, cai na busca livre (ou na cidade encontrada). |
-| `!radio parar` | `!radio parar` | Para a rádio e sai do canal de voz. |
+| `!radio stop` | `!radio stop` | Para a rádio e sai do canal de voz. |
 | `!radio` | `!radio` | Mostra a ajuda da rádio. |
 
-Atalhos curtos: `!r` = `!radio` · `!radio b <termo>` = `!radio buscar` · `!radio p` = `!radio parar` (ex.: `!r Tokyo`, `!radio b jazz`, `!radio p`).
+Comandos em inglês, como o resto do bot. Atalhos: `!r` = `!radio`, `!radio s` = `!radio search`. Também aceita os sinônimos em português `buscar` e `parar`.
 
 ### Como usar (passo a passo)
 
 1. Entre num canal de voz.
-2. Digite `!radio Brazil` (por país) ou `!radio buscar <termo>` (busca livre).
+2. Digite `!radio Brazil` (por país) ou `!radio search <termo>` (busca livre).
 3. Escolha a estação no **menu suspenso** que o bot enviar. No fluxo por país, clique em **Explorar cidades** para descer país → cidade → estação.
-4. O bot entra no canal e transmite ao vivo; use o botão **Parar** (ou `!radio parar`) para encerrar.
+4. O bot entra no canal e transmite ao vivo; use o botão **Parar** (ou `!radio stop`) para encerrar.
 
 > Os menus respondem apenas a quem chamou o comando, e é preciso estar num canal de voz para tocar.
 
