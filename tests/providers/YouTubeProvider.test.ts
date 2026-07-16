@@ -25,6 +25,14 @@ describe('YouTubeProvider', () => {
       expect(provider.supports('https://open.spotify.com/track/x')).toBe(false);
       expect(provider.supports('never gonna give you up')).toBe(false);
     });
+
+    it('reconhece as URLs de live (watch, /live/ID e @canal/live)', () => {
+      expect(provider.supports('https://www.youtube.com/live/abc123')).toBe(true);
+      expect(provider.supports('https://www.youtube.com/@lofigirl/live')).toBe(true);
+      expect(
+        provider.supports('https://www.youtube.com/channel/UCxyz/live'),
+      ).toBe(true);
+    });
   });
 
   describe('resolve()', () => {
@@ -92,6 +100,66 @@ describe('YouTubeProvider', () => {
           thumbnailUrl: undefined,
         },
       ]);
+    });
+
+    it('marca isLive e zera a duração para uma live (is_live)', async () => {
+      client.extract.mockResolvedValue({
+        id: 'live1',
+        title: 'Lofi ao vivo',
+        webpage_url: 'https://www.youtube.com/watch?v=live1',
+        // yt-dlp costuma reportar uma duração espúria em algumas lives;
+        // devemos ignorá-la e normalizar para 0.
+        duration: 99999,
+        channel: 'Lofi Girl',
+        is_live: true,
+      });
+
+      const tracks = await provider.resolve('https://www.youtube.com/live/live1');
+
+      expect(client.extract).toHaveBeenCalledWith(
+        'https://www.youtube.com/live/live1',
+        { noPlaylist: true },
+      );
+      expect(tracks[0]).toMatchObject({
+        id: 'live1',
+        durationMs: 0,
+        isLive: true,
+        source: SourceType.YouTube,
+      });
+    });
+
+    it('detecta live via live_status quando is_live está ausente', async () => {
+      client.extract.mockResolvedValue({
+        id: 'live2',
+        title: 'Stream',
+        webpage_url: 'https://www.youtube.com/watch?v=live2',
+        channel: 'C',
+        live_status: 'is_live',
+      });
+
+      const [track] = await provider.resolve(
+        'https://www.youtube.com/@canal/live',
+      );
+
+      expect(track.isLive).toBe(true);
+      expect(track.durationMs).toBe(0);
+    });
+
+    it('NÃO marca isLive para VOD de live encerrada (was_live)', async () => {
+      client.extract.mockResolvedValue({
+        id: 'vod1',
+        title: 'Antiga live',
+        webpage_url: 'https://www.youtube.com/watch?v=vod1',
+        duration: 3600,
+        channel: 'C',
+        is_live: false,
+        live_status: 'was_live',
+      });
+
+      const [track] = await provider.resolve('https://youtu.be/vod1');
+
+      expect(track.isLive).toBeUndefined();
+      expect(track.durationMs).toBe(3_600_000);
     });
 
     it('lança TrackNotFoundError quando a busca não retorna resultados', async () => {

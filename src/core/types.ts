@@ -35,6 +35,12 @@ export interface Track {
   readonly url: string;
   readonly source: SourceType;
   readonly thumbnailUrl?: string;
+  /**
+   * Transmissão ao vivo (ex.: live do YouTube). Quando true, a faixa não tem
+   * fim previsível: `durationMs` é 0 e o stream deve ser resolvido em modo
+   * live (ver IStreamResolver). Ausente/false para faixas comuns.
+   */
+  readonly isLive?: boolean;
   /** ID do usuário do Discord que requisitou a faixa. */
   requestedById?: string;
 }

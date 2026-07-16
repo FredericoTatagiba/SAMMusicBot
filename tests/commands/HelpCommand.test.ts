@@ -39,6 +39,6 @@ describe('HelpCommand', () => {
     expect(output).toContain('#p'); // atalho deve aparecer
     expect(output).toContain('#help');
     expect(output).toContain('uso:'); // explicação de uso
-    expect(output).toContain('<nome ou link>'); // exemplo de argumentos do play
+    expect(output).toContain('<nome, link ou live>'); // exemplo de argumentos do play
   });
 });

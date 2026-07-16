@@ -1,6 +1,6 @@
 # 🎵 Discord Music Bot
 
-Bot de música para Discord que busca e toca faixas a partir de **YouTube**, **Spotify** e **SoundCloud**. Escrito em **TypeScript** com arquitetura orientada a **SOLID**, **design patterns** e cobertura de **testes automatizados**.
+Bot de música para Discord que busca e toca faixas a partir de **YouTube** (incluindo **lives**), **Spotify** e **SoundCloud**. Escrito em **TypeScript** com arquitetura orientada a **SOLID**, **design patterns** e cobertura de **testes automatizados**.
 
 [![CI](https://github.com/SEU_USUARIO/SEU_REPO/actions/workflows/ci.yml/badge.svg)](../../actions)
 
@@ -9,6 +9,7 @@ Bot de música para Discord que busca e toca faixas a partir de **YouTube**, **S
 ## Recursos
 
 - Busca por nome ("`!play bohemian rhapsody`") ou por link direto (YouTube, Spotify, SoundCloud).
+- Toca **transmissões ao vivo do YouTube** — cole o link da live (`!play https://youtube.com/live/…`, `…/watch?v=…` ou `…/@canal/live`). Ela é exibida como `🔴 ao vivo` e ocupa o player até você usar `!skip` ou `!stop`.
 - Fila por servidor com faixa atual, próximas e limite configurável.
 - Controles: tocar, pular, parar, pausar, retomar, repetir (faixa/fila), embaralhar.
 - Desconexão automática após inatividade.
@@ -22,7 +23,7 @@ O áudio é sempre transmitido a partir do YouTube/SoundCloud. Como o Spotify n�
 
 | Comando | Aliases | Descrição |
 | --- | --- | --- |
-| `!play <nome\|link>` | `p`, `tocar` | Toca ou enfileira uma faixa. |
+| `!play <nome\|link\|live>` | `p`, `tocar` | Toca ou enfileira uma faixa (inclui lives do YouTube). |
 | `!skip` | `s`, `pular`, `next` | Pula a faixa atual. |
 | `!stop` | `parar`, `leave`, `sair` | Para tudo e sai do canal. |
 | `!pause` | `pausar` | Pausa a reprodução. |

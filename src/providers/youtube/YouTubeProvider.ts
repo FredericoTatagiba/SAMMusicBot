@@ -11,8 +11,9 @@ import { SourceType, Track } from '../../core/types';
 const YOUTUBE_URL_PATTERN = /(?:youtube\.com|youtu\.be)/i;
 
 /**
- * Provider de YouTube. Resolve URLs de playlist, URLs de vídeo e buscas
- * textuais (fallback) em faixas do domínio.
+ * Provider de YouTube. Resolve URLs de playlist, URLs de vídeo, URLs de live
+ * (`/watch?v=`, `/live/ID`, `@canal/live`) e buscas textuais (fallback) em
+ * faixas do domínio.
  *
  * Toda a extração é delegada a um `YtDlpMetadataClient` injetado
  * (Dependency Inversion): em produção usa o yt-dlp; em testes, um fake.
@@ -27,7 +28,9 @@ export class YouTubeProvider implements ISourceProvider {
   /**
    * Reconhece somente URLs do YouTube. Buscas em texto puro são tratadas
    * por este provider como fallback no `resolve`, mas não em `supports`,
-   * que precisa ser barato e síncrono.
+   * que precisa ser barato e síncrono. Cobre também os formatos de live
+   * (`/live/ID`, `@canal/live`, `/channel/UC.../live`), pois todos casam o
+   * domínio e são resolvidos como vídeo único (não têm `list=`).
    */
   public supports(query: string): boolean {
     return YOUTUBE_URL_PATTERN.test(query);
@@ -58,7 +61,7 @@ export class YouTubeProvider implements ISourceProvider {
     return this.mapEntries(query, info.entries ?? []);
   }
 
-  /** Resolve uma URL de vídeo único em uma faixa. */
+  /** Resolve uma URL de vídeo único (ou live) em uma faixa. */
   private async resolveVideo(query: string): Promise<Track[]> {
     const info = await this.client.extract(query, { noPlaylist: true });
     if (!info.id && !info.url && !info.webpage_url) {
@@ -90,15 +93,29 @@ export class YouTubeProvider implements ISourceProvider {
   /** Mapeia metadados do yt-dlp para o value object de domínio. */
   private toTrack(info: YtDlpInfo): Track {
     const id = info.id ?? '';
+    const isLive = this.isLive(info);
     return {
       id,
       title: info.title ?? 'Desconhecido',
       author: info.channel ?? info.uploader ?? 'Desconhecido',
-      durationMs: Math.round((info.duration ?? 0) * 1000),
+      // Lives não têm fim previsível: normalizamos a duração para 0 para que a
+      // UX ("🔴 ao vivo") não dependa de um valor eventualmente reportado.
+      durationMs: isLive ? 0 : Math.round((info.duration ?? 0) * 1000),
       url: this.resolveUrl(info, id),
       source: SourceType.YouTube,
       thumbnailUrl: info.thumbnail,
+      // Incluído só quando true para não poluir faixas comuns (value object).
+      ...(isLive ? { isLive: true } : {}),
     };
+  }
+
+  /**
+   * Detecta transmissão ao vivo. `is_live` é a fonte primária; `live_status`
+   * cobre casos em que o yt-dlp só preenche o status textual ('is_live').
+   * 'was_live'/'post_live' NÃO são ao vivo — são VODs de lives encerradas.
+   */
+  private isLive(info: YtDlpInfo): boolean {
+    return info.is_live === true || info.live_status === 'is_live';
   }
 
   /**

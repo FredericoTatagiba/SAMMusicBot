@@ -78,6 +78,66 @@ describe('YtDlpStreamResolver', () => {
     );
   });
 
+  it('usa format HLS e --hls-use-mpegts para lives', async () => {
+    const { sub } = makeSub();
+    mockedExec.mockReturnValue(sub);
+
+    await new YtDlpStreamResolver(spyLogger()).resolve({
+      ...ytTrack,
+      durationMs: 0,
+      isLive: true,
+    });
+
+    expect(mockedExec).toHaveBeenCalledWith(
+      'https://youtu.be/v1',
+      expect.objectContaining({
+        output: '-',
+        format: 'bestaudio/best',
+        hlsUseMpegts: true,
+        noPlaylist: true,
+      }),
+      expect.objectContaining({ windowsHide: true }),
+    );
+  });
+
+  it('aponta o ffmpeg (ffmpegLocation) para o yt-dlp', async () => {
+    const { sub } = makeSub();
+    mockedExec.mockReturnValue(sub);
+
+    await new YtDlpStreamResolver(spyLogger(), '/bin/ffmpeg').resolve({
+      ...ytTrack,
+      durationMs: 0,
+      isLive: true,
+    });
+
+    expect(mockedExec).toHaveBeenCalledWith(
+      'https://youtu.be/v1',
+      expect.objectContaining({ ffmpegLocation: '/bin/ffmpeg' }),
+      expect.anything(),
+    );
+  });
+
+  it('omite ffmpegLocation quando nenhum ffmpeg é encontrado', async () => {
+    const { sub } = makeSub();
+    mockedExec.mockReturnValue(sub);
+
+    await new YtDlpStreamResolver(spyLogger(), null).resolve(ytTrack);
+
+    const options = mockedExec.mock.calls[0]![1] as Record<string, unknown>;
+    expect(options).not.toHaveProperty('ffmpegLocation');
+  });
+
+  it('NÃO envia flags de live para faixas comuns', async () => {
+    const { sub } = makeSub();
+    mockedExec.mockReturnValue(sub);
+
+    await new YtDlpStreamResolver(spyLogger(), null).resolve(ytTrack);
+
+    const options = mockedExec.mock.calls[0]![1] as Record<string, unknown>;
+    expect(options.format).toBe('bestaudio[ext=webm]/bestaudio/best');
+    expect(options).not.toHaveProperty('hlsUseMpegts');
+  });
+
   it('faixa do Spotify vira busca no YouTube (ytsearch1)', async () => {
     const { sub } = makeSub();
     mockedExec.mockReturnValue(sub);

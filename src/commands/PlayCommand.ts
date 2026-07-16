@@ -8,8 +8,8 @@ export class PlayCommand implements ICommand {
   readonly name = 'play';
   readonly aliases = ['p', 'tocar'] as const;
   readonly description =
-    'Toca uma música por nome ou link (YouTube, Spotify, SoundCloud). Se já houver algo tocando, adiciona à fila.';
-  readonly usage = '<nome ou link>';
+    'Toca uma música por nome ou link (YouTube, Spotify, SoundCloud), incluindo lives do YouTube. Se já houver algo tocando, adiciona à fila.';
+  readonly usage = '<nome, link ou live>';
 
   constructor(
     private readonly search: SearchService,

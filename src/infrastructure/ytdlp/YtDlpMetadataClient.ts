@@ -21,6 +21,13 @@ export interface YtDlpInfo {
   readonly channel?: string;
   readonly uploader?: string;
   readonly thumbnail?: string;
+  /** true enquanto a transmissão está ao vivo. */
+  readonly is_live?: boolean;
+  /**
+   * Estado da transmissão: 'is_live', 'was_live', 'is_upcoming',
+   * 'post_live', 'not_live'. Complementa `is_live` para casos de borda.
+   */
+  readonly live_status?: string;
   /** Faixas de uma playlist/set ou resultados de uma busca. */
   readonly entries?: ReadonlyArray<YtDlpInfo>;
 }
