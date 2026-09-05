@@ -184,4 +184,34 @@ describe('YtDlpStreamResolver', () => {
       }),
     );
   });
+
+  it('injeta as flags anti-bot do yt-dlp (extractor-args) no stream', async () => {
+    const { sub } = makeSub();
+    mockedExec.mockReturnValue(sub);
+
+    await new YtDlpStreamResolver(spyLogger(), null, {
+      extractorArgs: 'youtube:player_client=tv,web_safari',
+    }).resolve(ytTrack);
+
+    expect(mockedExec).toHaveBeenCalledWith(
+      'https://youtu.be/v1',
+      expect.objectContaining({
+        extractorArgs: 'youtube:player_client=tv,web_safari',
+      }),
+      expect.anything(),
+    );
+  });
+
+  it('propaga cookies do yt-dlp quando fornecidos', async () => {
+    const { sub } = makeSub();
+    mockedExec.mockReturnValue(sub);
+
+    await new YtDlpStreamResolver(spyLogger(), null, {
+      extractorArgs: 'youtube:player_client=web_safari',
+      cookiesFromBrowser: 'firefox',
+    }).resolve(ytTrack);
+
+    const options = mockedExec.mock.calls[0]![1] as Record<string, unknown>;
+    expect(options.cookiesFromBrowser).toBe('firefox');
+  });
 });

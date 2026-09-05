@@ -43,4 +43,16 @@ describe('ExecYtDlpMetadataClient', () => {
     expect(mockedYoutubedl.mock.calls[0][1]).toMatchObject({ noPlaylist: true });
     expect(mockedYoutubedl.mock.calls[0][1]).not.toHaveProperty('flatPlaylist');
   });
+
+  it('injeta as flags anti-bot (extractor-args) na extração de metadados', async () => {
+    const hardened = new ExecYtDlpMetadataClient({
+      extractorArgs: 'youtube:player_client=tv,web_safari',
+    });
+
+    await hardened.extract('https://youtu.be/x');
+
+    expect(mockedYoutubedl.mock.calls[0][1]).toMatchObject({
+      extractorArgs: 'youtube:player_client=tv,web_safari',
+    });
+  });
 });

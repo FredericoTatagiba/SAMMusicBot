@@ -1,4 +1,8 @@
 import youtubedl from 'youtube-dl-exec';
+import {
+  YtDlpHardeningOptions,
+  buildYtDlpHardeningOptions,
+} from './ytdlpHardening';
 
 /**
  * Metadados de uma faixa ou de uma playlist, extraídos pelo yt-dlp.
@@ -61,6 +65,12 @@ export interface YtDlpMetadataClient {
  * objeto JSON com tudo que precisamos.
  */
 export class ExecYtDlpMetadataClient implements YtDlpMetadataClient {
+  constructor(
+    // Injetável (Dependency Inversion) e testável; por padrão lê do ambiente.
+    private readonly hardening: YtDlpHardeningOptions =
+      buildYtDlpHardeningOptions(),
+  ) {}
+
   async extract(
     target: string,
     options: YtDlpExtractOptions = {},
@@ -74,6 +84,8 @@ export class ExecYtDlpMetadataClient implements YtDlpMetadataClient {
         dumpSingleJson: true,
         noWarnings: true,
         quiet: true,
+        // Endurecimento anti-bot do YouTube (extractor-args/cookies).
+        ...this.hardening,
         ...(options.flatPlaylist ? { flatPlaylist: true } : {}),
         ...(options.noPlaylist ? { noPlaylist: true } : {}),
       },

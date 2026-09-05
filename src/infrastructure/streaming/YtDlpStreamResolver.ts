@@ -4,6 +4,10 @@ import { ILogger } from '../../core/interfaces/ILogger';
 import { IStreamResolver } from '../../core/interfaces/IStreamResolver';
 import { AudioStream, AudioStreamType, SourceType, Track } from '../../core/types';
 import { StreamResolutionError } from '../../core/errors';
+import {
+  YtDlpHardeningOptions,
+  buildYtDlpHardeningOptions,
+} from '../ytdlp/ytdlpHardening';
 
 /** Quantidade máxima de bytes de stderr mantidos para diagnóstico. */
 const STDERR_TAIL_LIMIT = 2000;
@@ -31,6 +35,9 @@ export class YtDlpStreamResolver implements IStreamResolver {
     private readonly logger: ILogger,
     // Injetável (Dependency Inversion) e testável; por padrão localiza sozinho.
     private readonly ffmpegPath: string | null = resolveFfmpegPath(),
+    // Endurecimento anti-bot do YouTube; injetável para testes.
+    private readonly hardening: YtDlpHardeningOptions =
+      buildYtDlpHardeningOptions(),
   ) {}
 
   async resolve(track: Track): Promise<AudioStream> {
@@ -118,6 +125,8 @@ export class YtDlpStreamResolver implements IStreamResolver {
       quiet: true,
       noWarnings: true,
       noPlaylist: true,
+      // Endurecimento anti-bot do YouTube (extractor-args/cookies).
+      ...this.hardening,
       ...(this.ffmpegPath ? { ffmpegLocation: this.ffmpegPath } : {}),
     };
     if (track.isLive) {
